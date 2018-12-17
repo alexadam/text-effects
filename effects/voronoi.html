@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="utf-8">
+    <title>Voronoi Text</title>
+
+    <style media="screen">
+        html,body {
+            background: #ecf0f1;width: 100%; height: 100%; margin: 0; padding: 0; box-sizing: border-box;
+        }
+        * {font-family: sans-serif;}
+        .container {
+            width: 100%; height: 100%; display: flex;flex-flow: column;
+        }
+        .row {
+            width: 100%; display: flex; flex-flow: row; justify-content: center; margin-bottom: 5px;
+        }
+        .title {
+            font-size: 36px; font-weight: bold; margin: 10px 0;
+        }
+        .input-container {
+            display: flex; flex-flow: row; padding: 3px; line-height: 30px; vertical-align: middle; margin-right: 10px;
+        }
+        .label {
+            font-size: 14px; font-weight: bold; margin-right: 5px;
+        }
+        .input {
+            padding: 3px; height: 20px;
+        }
+        input[type=number] {
+            width: 50px;
+        }
+        input[type=color] {
+            height: 30px;
+        }
+        input[type=text] {
+            width: 150px;
+        }
+        button {
+            font-size: 15px; outline: 0; border: solid 1px black; cursor: pointer; background-color: yellow; font-weight: bold; padding: 3px;
+        }
+
+        .canvas-container {
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            margin: auto;
+            background: #ecf0f1;
+            /* width: 100%; height: 100%; */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row title">
+            Voronoi Text
+        </div>
+        <div class="row">
+            <div class="input-container">
+                <div class="label">Text</div>
+                <input type="text" name="" value="" class="input" id='textInput' />
+            </div>
+            <div class="input-container">
+                <div class="label">Font Size</div>
+                <input type="number" name="" value="" class="input" id='fontSize' />
+            </div>
+        </div>
+        <div class="row">
+            <div class="input-container">
+                <div class="label">Canvas Width</div>
+                <input type="number" name="" value="" class="input" id='canvasWidth' />
+            </div>
+            <div class="input-container">
+                <div class="label">Canvas Height</div>
+                <input type="number" name="" value="" class="input" id='canvasHeight' />
+            </div>
+        </div>
+        <div class="row">
+            <div class="input-container">
+                <div class="label">Nr of Points</div>
+                <input type="number" name="" value="" class="input" id='nrOfPoints' />
+            </div>
+            <div class="input-container">
+                <div class="label">Point Color</div>
+                <input type="color" name="" value="" class="input" step="0.1" id='pointColor' />
+            </div>
+            <div class="input-container">
+                <div class="label">Cell Radius</div>
+                <input type="number" name="" value="" class="input" step="0.1" id='cellRadius' />
+            </div>
+            <div class="input-container">
+                <div class="label">Point Radius</div>
+                <input type="number" name="" value="" class="input" step="0.1" id='pointRadius' />
+            </div>
+        </div>
+        <div class="row">
+            <button type="button" name="button" id="applyButton">Apply</button>
+        </div>
+        <div class="row">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="row">
+            <button type="button" name="button" id="resetButton">Reset</button>
+        </div>
+        <div class="row">
+            Credits: <a href="https://codepen.io/birjolaxew/pen/Fdbws/">https://codepen.io/birjolaxew/pen/Fdbws/</a> & <a href="https://codepen.io/Prodesigner/pen/XKoqgE">https://codepen.io/Prodesigner/pen/XKoqgE</a>
+        </div>
+
+    </div>
+</body>
+
+
+<script src="https://d3js.org/d3-voronoi.v0.3.min.js" charset="utf-8"></script>
+<script src="https://d3js.org/d3-timer.v0.1.min.js" charset="utf-8"></script>
+
+<script type="text/javascript">
+
+    let canvas = document.querySelector("#canvas");
+    let canvasContainer = document.querySelector(".canvas-container");
+    let context = canvas.getContext("2d");
+    let cx = canvas.getContext('2d');
+    let randomPoints = [];
+
+    let colors = [
+          '#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5',
+          '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50',
+          '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800',
+          '#FF5722'
+        ];
+
+    let timer = null
+    let string = 'Webinti'
+    let nrOfPoints = 1200
+    let radius = 2
+    let pointRadius = 1.5
+    let pointColor = '#35384A'
+    let cellColor = '#35384A'
+    let fontSize = 128
+    let canvasWidth = 800
+    let canvasHeight = 600
+    let fontType = 'Helvetica Neue, Helvetica, Arial, sans-serif'
+
+    let textElem = document.getElementById('textInput')
+    textElem.value = string
+
+    let fontSizeElem = document.getElementById('fontSize')
+    fontSizeElem.value = fontSize
+
+    let resetButtonElem = document.getElementById('resetButton')
+    resetButtonElem.onclick = () => {
+        reset()
+    }
+    let applyButtonElem = document.getElementById('applyButton')
+    applyButtonElem.onclick = () => {
+        reset()
+    }
+
+    let canvasWidthElem = document.getElementById('canvasWidth')
+    canvasWidthElem.value = canvasWidth
+
+
+    let canvasHeightElem = document.getElementById('canvasHeight')
+    canvasHeightElem.value = canvasHeight
+
+    let nrOfPointsElem = document.getElementById('nrOfPoints')
+    nrOfPointsElem.value = nrOfPoints
+
+    let cellRadiusElem = document.getElementById('cellRadius')
+    cellRadiusElem.value = radius
+
+    let pointRadiusElem = document.getElementById('pointRadius')
+    pointRadiusElem.value = pointRadius
+
+    let pointColorElem = document.getElementById('pointColor')
+    pointColorElem.value = pointColor
+
+    reset = () => {
+        canvasWidth = canvasWidthElem.value
+        canvasHeight = canvasHeightElem.value
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        string = textElem.value
+        fontSize = fontSizeElem.value
+        nrOfPoints = nrOfPointsElem.value
+        radius = cellRadiusElem.value
+        pointRadius = pointRadiusElem.value
+        pointColor = pointColorElem.value
+
+        populateRandomPoints()
+        createVoronoi()
+        timer.restart(timerCallback)
+    }
+
+
+    const populateRandomPoints = () => {
+        // let randVal = Math.floor(Math.random()*config.point.max + config.point.min)
+        // for(let i = 0; i<randVal; ++i){
+        // 	let pointX = Math.floor(Math.random()*(config.canvas.width))
+        // 	let pointY = Math.floor(Math.random()*(config.canvas.height))
+        // 	let index = Math.floor(Math.random()*(colors.length))
+        // 	let color = colors[index]
+        // 	randomPoints.push({
+        // 	x:pointX,
+        // 	y:pointY,
+        // 	color:color,
+        // })
+        // }
+
+        randomPoints = [];
+        let ctx = canvas.getContext("2d");
+        let mask;
+        let whitePixels = []
+        let c = canvas
+
+        // let str = "Webinti";
+        let fontStr = "bold " + fontSize + "pt " + fontType;
+
+        ctx.font = fontStr;
+        ctx.textAlign = "center";
+        // canvas.width = ctx.measureText(str).width + 100;
+        // canvas.height = canvas.width * 9 / 16; // Set to font size
+
+        ctx.canvas.width = canvasWidth;
+        ctx.canvas.height = canvasHeight;
+
+        ctx.beginPath();
+        ctx.fillStyle = "#000";
+        ctx.rect(0, 0, canvasWidth, canvasHeight);
+        ctx.fill();
+        ctx.font = fontStr;
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.fillText(string, canvasWidth/2, canvasHeight/2 + fontSize/2)// + (canvasHeight / 4));
+        ctx.closePath();
+
+        // Save mask
+        mask = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+
+        // Draw background
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        // Save all white pixels in an array
+        for (let i = 0; i < mask.data.length; i += 4) {
+            if (mask.data[i] == 255 && mask.data[i + 1] == 255 && mask.data[i + 2] == 255 && mask.data[i + 3] == 255) {
+                whitePixels.push([iToX(i, mask.width), iToY(i, mask.width)]);
+            }
+        }
+
+        for (let k = 0; k < nrOfPoints; k++) {
+            addPoint();
+        }
+
+        function addPoint() {
+            let spawn = whitePixels[Math.floor(Math.random() * whitePixels.length)];
+
+            let index = Math.floor(Math.random() * (colors.length))
+            let color = colors[index]
+            randomPoints.push({
+                x: spawn[0],
+                y: spawn[1],
+                color: color,
+            })
+        }
+
+        function iToX(i, w) {
+            return ((i % (4 * w)) / 4);
+        }
+
+        function iToY(i, w) {
+            return (Math.floor(i / (4 * w)));
+        }
+
+        function coordsToI(x, y, w) {
+            return ((mask.width * y) + x) * 4;
+
+        }
+
+
+    };
+
+    populateRandomPoints();
+
+
+    ///////
+
+    let voronoi = d3_voronoi.voronoi().extent([
+            [0.5, 0.5],
+            [canvasWidth - 0.5, canvasHeight - 0.5]
+        ]);
+
+        let particles = []
+
+    const createVoronoi = () => {
+        voronoi = d3_voronoi.voronoi().extent([
+                [0.5, 0.5],
+                [canvasWidth - 0.5, canvasHeight - 0.5]
+            ]);
+        particles = []
+
+        for (let i = 0; i < nrOfPoints; ++i) particles[i] = {
+            // 0: Math.random() * width,
+            0: randomPoints[i].x,
+            // 1: Math.random() * height,
+            1: randomPoints[i].y,
+            color: randomPoints[i].color,
+            vx: 0,
+            vy: 0
+        };
+
+
+    }
+
+    createVoronoi()
+
+
+
+
+    const timerCallback = (elapsed) => {
+        for (let i = 0; i < nrOfPoints; ++i) {
+            let p = particles[i];
+            p[0] += p.vx;
+            if (p[0] < 0) p[0] = p.vx *= -1;
+            else if (p[0] > canvasWidth) p[0] = canvasWidth + (p.vx *= -1);
+            p[1] += p.vy;
+            if (p[1] < 0) p[1] = p.vy *= -1;
+            else if (p[1] > canvasHeight) p[1] = canvasHeight + (p.vy *= -1);
+            p.vx += 0.1 * (Math.random() - .5) - 0.01 * p.vx;
+            p.vy += 0.1 * (Math.random() - .5) - 0.01 * p.vy;
+        }
+
+        let cells = voronoi.polygons(particles);
+        context.clearRect(0, 0, canvasWidth, canvasHeight);
+
+
+        context.shadowOffsetX = 3;
+        context.shadowOffsetY = 2;
+        context.shadowBlur = 1.5;
+        context.shadowColor = 'rgba(30,30,30, 0.1)';
+
+        context.beginPath();
+        cells.forEach(function(cell) {
+            drawRoundedPolygon(cell, radius);
+        });
+        context.fillStyle = "#227176";
+        context.fillStyle = "#ddd";
+        context.fill();
+        context.lineWidth = 5;
+        context.strokeStyle = "#227176";
+        context.strokeStyle = "#fff";
+        context.stroke();
+
+        context.beginPath();
+        cells.forEach(function(cell) {
+            drawPolygon(cell);
+        });
+
+        context.lineWidth = 1;
+        context.strokeStyle = "#aaa";
+        context.stroke();
+
+        context.beginPath();
+        particles.forEach(function(particle) {
+            drawPoint(particle);
+        });
+        context.fillStyle = pointColor;
+        context.fill();
+    }
+
+    timer = d3_timer.timer(timerCallback);
+
+
+
+    function drawPoint(point) {
+        context.moveTo(point[0] + 1.5, point[1]);
+        context.arc(point[0], point[1], pointRadius , 0, 2 * Math.PI);
+    }
+
+    function drawPolygon(points) {
+        context.moveTo(points[0][0], points[0][1]);
+        for (let i = 1, n = points.length; i < n; ++i) context.lineTo(points[i][0], points[i][1]);
+        context.closePath();
+    }
+
+    function drawRoundedPolygon(points, r) {
+        let i,
+            n = points.length,
+            p0,
+            p1,
+            p2,
+            p3,
+            n1 = 0,
+            t012,
+            t123,
+            x21, y21,
+            x4, y4,
+            x5, y5,
+            moved,
+            circle = polygonIncircle(points);
+
+        // Build a linked list from the array of vertices so we can splice.
+        for (i = 0, p1 = points[n - 2], p2 = points[n - 1]; i < n; ++i) {
+            p0 = p1, p1 = p2, p2 = points[i];
+            p1.previous = p0;
+            p1.next = p2;
+        }
+
+        // The rounding radius can’t be bigger than the polygon’s incircle.
+        // The fudge factor of 1px lets the rounded polygon get squished a bit.
+        // TODO Abort the search for the incircle if one is found larger than r.
+        r = Math.min(r, circle.radius - 1);
+        if (r <= 0) return;
+
+        // TODO do we need to make all these extra passes?
+        for (i = 0, p3 = p2.next; n1 <= n; ++n1) {
+            p0 = p1, p1 = p2, p2 = p3, p3 = p3.next;
+            t012 = cornerTangent(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], r);
+            t123 = 1 - cornerTangent(p3[0], p3[1], p2[0], p2[1], p1[0], p1[1], r);
+
+            // If the following corner’s tangent is before this corner’s tangent,
+            // replace p1 and p2 with the intersection of the lines 01 and 23.
+            if (t012 >= t123) {
+                p2 = p0.next = p3.previous = lineLineIntersection(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], p3[0], p3[1]);
+                p2.previous = p0;
+                p2.next = p3;
+                p3 = p2;
+                p2 = p3.previous;
+                p1 = p2.previous;
+                p0 = p1.previous;
+                n1 = 0;
+                if (--n < 3) break;
+            }
+        }
+
+        // If we removed too many points, just draw the previously computed incircle.
+        if (n < 3) {
+            context.moveTo(circle[0] + circle.radius, circle[1]);
+            context.arc(circle[0], circle[1], circle.radius, 0, 2 * Math.PI);
+            return;
+        }
+
+        // Draw the rounded polygon, compting the corner tangents.
+        for (i = 0; i <= n; ++i) {
+            p0 = p1, p1 = p2, p2 = p3, p3 = p3.next;
+            t012 = cornerTangent(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], r);
+            t123 = 1 - cornerTangent(p3[0], p3[1], p2[0], p2[1], p1[0], p1[1], r);
+            x21 = p2[0] - p1[0], y21 = p2[1] - p1[1];
+            x4 = p1[0] + t012 * x21, y4 = p1[1] + t012 * y21;
+            x5 = p1[0] + t123 * x21, y5 = p1[1] + t123 * y21;
+            if (moved) context.arcTo(p1[0], p1[1], x4, y4, r);
+            else moved = true, context.moveTo(x4, y4);
+            context.lineTo(x5, y5);
+        }
+    }
+
+    // Given a circle of radius r that is tangent to the line segments 01 and 12,
+    // returns the parameter t of the tangent along the line segment 12.
+    function cornerTangent(x0, y0, x1, y1, x2, y2, r) {
+        let theta = innerAngle(x0, y0, x1, y1, x2, y2),
+            x21 = x2 - x1,
+            y21 = y2 - y1,
+            l21 = Math.sqrt(x21 * x21 + y21 * y21),
+            l14 = r / Math.tan(theta / 2);
+        return l14 / l21;
+    }
+
+    // A horrible brute-force algorithm for determining the largest circle that can
+    // fit inside a convex polygon. For each distinct set of three sides of the
+    // polygon, compute the tangent circle. Then reduce the circle’s radius against
+    // the remaining sides of the polygon.
+    function polygonIncircle(points) {
+        let circle = {
+            radius: 0
+        };
+
+        for (let i = 0, n = points.length; i < n; ++i) {
+            let pi0 = points[i],
+                pi1 = points[(i + 1) % n];
+            for (let j = i + 1; j < n; ++j) {
+                let pj0 = points[j],
+                    pj1 = points[(j + 1) % n],
+                    pij = j === i + 1 ? pj0 : lineLineIntersection(pi0[0], pi0[1], pi1[0], pi1[1], pj0[0], pj0[1], pj1[0], pj1[1]);
+                search: for (let k = j + 1; k < n; ++k) {
+                    let pk0 = points[k],
+                        pk1 = points[(k + 1) % n],
+                        pik = lineLineIntersection(pi0[0], pi0[1], pi1[0], pi1[1], pk0[0], pk0[1], pk1[0], pk1[1]),
+                        pjk = k === j + 1 ? pk0 : lineLineIntersection(pj0[0], pj0[1], pj1[0], pj1[1], pk0[0], pk0[1], pk1[0], pk1[1]),
+                        candidate = triangleIncircle(pij[0], pij[1], pik[0], pik[1], pjk[0], pjk[1]),
+                        radius = candidate.radius;
+
+                    for (let l = 0; l < n; ++l) {
+                        let pl0 = points[l],
+                            pl1 = points[(l + 1) % n],
+                            r = pointLineDistance(candidate[0], candidate[1], pl0[0], pl0[1], pl1[0], pl1[1]);
+                        if (r < circle.radius) continue search;
+                        if (r < radius) radius = r;
+                    }
+
+                    circle = candidate;
+                    circle.radius = radius;
+                }
+            }
+        }
+
+        return circle;
+    }
+
+    // Returns the angle between segments 01 and 12.
+    function innerAngle(x0, y0, x1, y1, x2, y2) {
+        let x01 = x0 - x1,
+            y01 = y0 - y1,
+            x12 = x1 - x2,
+            y12 = y1 - y2,
+            x02 = x0 - x2,
+            y02 = y0 - y2,
+            l01_2 = x01 * x01 + y01 * y01,
+            l12_2 = x12 * x12 + y12 * y12,
+            l02_2 = x02 * x02 + y02 * y02;
+        return Math.acos((l12_2 + l01_2 - l02_2) / (2 * Math.sqrt(l12_2 * l01_2)));
+    }
+
+    // Returns the intersection of the infinite lines 01 and 23.
+    function lineLineIntersection(x0, y0, x1, y1, x2, y2, x3, y3) {
+        let x02 = x0 - x2,
+            y02 = y0 - y2,
+            x10 = x1 - x0,
+            y10 = y1 - y0,
+            x32 = x3 - x2,
+            y32 = y3 - y2,
+            t = (x32 * y02 - y32 * x02) / (y32 * x10 - x32 * y10);
+        return [x0 + t * x10, y0 + t * y10];
+    }
+
+    // Returns the signed distance from point 0 to the infinite line 12.
+    function pointLineDistance(x0, y0, x1, y1, x2, y2) {
+        let x21 = x2 - x1,
+            y21 = y2 - y1;
+        return (y21 * x0 - x21 * y0 + x2 * y1 - y2 * x1) / Math.sqrt(y21 * y21 + x21 * x21);
+    }
+
+    // Returns the largest circle inside the triangle 012.
+    function triangleIncircle(x0, y0, x1, y1, x2, y2) {
+        let x01 = x0 - x1,
+            y01 = y0 - y1,
+            x02 = x0 - x2,
+            y02 = y0 - y2,
+            x12 = x1 - x2,
+            y12 = y1 - y2,
+            l01 = Math.sqrt(x01 * x01 + y01 * y01),
+            l02 = Math.sqrt(x02 * x02 + y02 * y02),
+            l12 = Math.sqrt(x12 * x12 + y12 * y12),
+            k0 = l01 / (l01 + l02),
+            k1 = l12 / (l12 + l01),
+            center = lineLineIntersection(x0, y0, x1 - k0 * x12, y1 - k0 * y12, x1, y1, x2 + k1 * x02, y2 + k1 * y02);
+        center.radius = Math.sqrt((l02 + l12 - l01) * (l12 + l01 - l02) * (l01 + l02 - l12) / (l01 + l02 + l12)) / 2;
+        return center;
+    }
+</script>
+
+</html>
